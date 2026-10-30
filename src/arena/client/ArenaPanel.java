@@ -55,26 +55,39 @@ public final class ArenaPanel extends JPanel {
     private static final double FIRE_COOLDOWN = 0.45;
     private static final double DASH_COOLDOWN = 2.2;
 
-    private static final Color BG = new Color(0x070A12);
-    private static final Color FLOOR = new Color(0x0B1020);
-    private static final Color GRID = new Color(0x141C33);
+    private static final Color BG = new Color(0x04060E);
+    private static final Color FLOOR = new Color(0x080D1A);
+    private static final Color GRID = new Color(0x0E1628);
     private static final Color MIRROR = new Color(0x78E1FF);
     private static final Color CRATE = new Color(0xFFAA3C);
-    private static final Color PANEL_BG = new Color(8, 12, 24, 200);
+    private static final Color PANEL_BG = new Color(6, 9, 20, 210);
     private static final Color DIM = new Color(0x8A93B0);
 
     private static final Font LABEL = new Font(Font.SANS_SERIF, Font.PLAIN, 10);
     private static final Font NAME = new Font(Font.SANS_SERIF, Font.BOLD, 12);
     private static final Font MONO = new Font(Font.MONOSPACED, Font.PLAIN, 12);
     private static final Font MONO_BOLD = new Font(Font.MONOSPACED, Font.BOLD, 13);
-    private static final Font FEED = new Font(Font.SANS_SERIF, Font.BOLD, 13);
+    private static final Font FEED = new Font(Font.SANS_SERIF, Font.BOLD, 14);
     private static final Font MED = new Font(Font.SANS_SERIF, Font.BOLD, 24);
-    private static final Font BIG = new Font(Font.SANS_SERIF, Font.BOLD, 56);
+    private static final Font BIG = new Font(Font.SANS_SERIF, Font.BOLD, 72);
+    private static final Font HUGE = new Font(Font.SANS_SERIF, Font.BOLD, 96);
 
     private final MapData map;
     private final int myId;
     private final Sfx sfx;
     private final Random rnd = new Random();
+
+    // Starfield (drawn once, parallax offset by game-world position)
+    private static final int STAR_COUNT = 220;
+    private final float[] starX = new float[STAR_COUNT];
+    private final float[] starY = new float[STAR_COUNT];
+    private final float[] starR = new float[STAR_COUNT];
+    private final float[] starBright = new float[STAR_COUNT];
+    private final int[] starLayer = new int[STAR_COUNT]; // 0=far,1=mid,2=near
+
+    // Ship trail points: per-player trail
+    private final java.util.concurrent.ConcurrentHashMap<Integer, java.util.ArrayDeque<float[]>> trails
+            = new java.util.concurrent.ConcurrentHashMap<>();
 
     // written by RMI threads
     private final Object lock = new Object();
@@ -116,6 +129,15 @@ public final class ArenaPanel extends JPanel {
         setFocusable(true);
         setFocusTraversalKeysEnabled(false);
         setDoubleBuffered(true);
+        // Init starfield
+        Random sr = new Random(12345);
+        for (int i = 0; i < STAR_COUNT; i++) {
+            starX[i] = sr.nextFloat() * 1280;
+            starY[i] = sr.nextFloat() * 720;
+            starLayer[i] = sr.nextInt(3);
+            starR[i] = 0.5f + sr.nextFloat() * (starLayer[i] == 2 ? 1.8f : starLayer[i] == 1 ? 1.2f : 0.7f);
+            starBright[i] = 0.4f + sr.nextFloat() * 0.6f;
+        }
         new Timer(15, e -> repaint()).start();
     }
 
@@ -343,14 +365,64 @@ public final class ArenaPanel extends JPanel {
     // ------------------------------------------------------------------ world layer
 
     private void drawFloor(Graphics2D g) {
+        // Deep space background
         g.setColor(FLOOR);
         g.fillRect(0, 0, map.width(), map.height());
-        g.setColor(GRID);
+
+        // Nebula glow — two radial gradient blobs
+        java.awt.RadialGradientPaint nebula1 = new java.awt.RadialGradientPaint(
+                new java.awt.geom.Point2D.Double(map.width() * 0.25, map.height() * 0.35), map.width() * 0.55f,
+                new float[]{0f, 1f}, new Color[]{new Color(20, 10, 60, 40), new Color(0, 0, 0, 0)});
+        g.setPaint(nebula1);
+        g.fillRect(0, 0, map.width(), map.height());
+        java.awt.RadialGradientPaint nebula2 = new java.awt.RadialGradientPaint(
+                new java.awt.geom.Point2D.Double(map.width() * 0.78, map.height() * 0.65), map.width() * 0.50f,
+                new float[]{0f, 1f}, new Color[]{new Color(0, 30, 60, 35), new Color(0, 0, 0, 0)});
+        g.setPaint(nebula2);
+        g.fillRect(0, 0, map.width(), map.height());
+
+        // Starfield — twinkling dots of varying brightness
+        long now = System.nanoTime();
         g.setStroke(new BasicStroke(1));
-        for (int x = 40; x < map.width(); x += 40) g.drawLine(x, 0, x, map.height());
-        for (int y = 40; y < map.height(); y += 40) g.drawLine(0, y, map.width(), y);
-        g.setColor(new Color(120, 225, 255, 40));
-        g.setStroke(new BasicStroke(8));
+        for (int i = 0; i < STAR_COUNT; i++) {
+            float twinkle = starBright[i] * (0.7f + 0.3f * (float) Math.sin(now / 8e8 + i * 1.7));
+            int alpha = (int) (twinkle * 255);
+            g.setColor(new Color(200, 220, 255, Math.max(0, Math.min(255, alpha))));
+            float r = starR[i];
+            if (r > 1.2f) {
+                // Bigger stars get a tiny cross-hair glow
+                g.setColor(new Color(200, 220, 255, alpha / 3));
+                g.fill(new Ellipse2D.Float(starX[i] - r * 2, starY[i] - r * 2, r * 4, r * 4));
+            }
+            g.setColor(new Color(220, 235, 255, alpha));
+            g.fill(new Ellipse2D.Float(starX[i] - r, starY[i] - r, r * 2, r * 2));
+        }
+
+        // Hex grid
+        g.setColor(GRID);
+        g.setStroke(new BasicStroke(0.7f));
+        int hSize = 36;
+        double hw = hSize * Math.sqrt(3);
+        double hh = hSize * 2;
+        for (int row = -1; row < map.height() / (hh * 0.75) + 2; row++) {
+            for (int col = -1; col < map.width() / hw + 2; col++) {
+                double cx = col * hw + (row % 2 == 0 ? 0 : hw / 2);
+                double cy = row * hh * 0.75;
+                Path2D hex = new Path2D.Double();
+                for (int v = 0; v < 6; v++) {
+                    double angle = Math.PI / 6 + Math.PI / 3 * v;
+                    double px = cx + hSize * Math.cos(angle);
+                    double py = cy + hSize * Math.sin(angle);
+                    if (v == 0) hex.moveTo(px, py); else hex.lineTo(px, py);
+                }
+                hex.closePath();
+                g.draw(hex);
+            }
+        }
+
+        // Bright arena border + glow
+        g.setColor(new Color(120, 225, 255, 60));
+        g.setStroke(new BasicStroke(10));
         g.drawRect(0, 0, map.width(), map.height());
         g.setColor(MIRROR);
         g.setStroke(new BasicStroke(2));
@@ -455,23 +527,37 @@ public final class ArenaPanel extends JPanel {
             path.moveTo(p[0], p[1]);
             for (int i = 2; i + 1 < p.length; i += 2) path.lineTo(p[i], p[i + 1]);
             Color c = new Color(bm.colorRgb());
-            float width = (float) (0.6 + life * 0.4);
-            g.setStroke(new BasicStroke(14 * width, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
-            g.setColor(alpha(c, 0.10 * life));
+            float width = (float) (0.5 + life * 0.5);
+            // Outermost bloom (very wide, very faint)
+            g.setStroke(new BasicStroke(28 * width, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+            g.setColor(alpha(c, 0.05 * life));
             g.draw(path);
-            g.setStroke(new BasicStroke(6 * width, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
-            g.setColor(alpha(c, 0.35 * life));
+            // Mid bloom
+            g.setStroke(new BasicStroke(16 * width, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+            g.setColor(alpha(c, 0.12 * life));
             g.draw(path);
+            // Inner glow
+            g.setStroke(new BasicStroke(7 * width, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+            g.setColor(alpha(c, 0.40 * life));
+            g.draw(path);
+            // Core
             g.setStroke(new BasicStroke(2.5f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
             g.setColor(alpha(c.brighter(), life));
             g.draw(path);
-            g.setStroke(new BasicStroke(1f));
-            g.setColor(alpha(Color.WHITE, 0.9 * life));
+            // Bright white center
+            g.setStroke(new BasicStroke(1.2f));
+            g.setColor(alpha(Color.WHITE, 0.95 * life));
             g.draw(path);
+            // Bounce point sparks
             for (int i = 2; i + 3 < p.length; i += 2) {
-                double r = 7 * life + 2;
-                g.setColor(alpha(Color.WHITE, 0.7 * life));
+                double r = 9 * life + 2;
+                // Colored halo
+                g.setColor(alpha(c, 0.55 * life));
                 g.fill(new Ellipse2D.Double(p[i] - r, p[i + 1] - r, 2 * r, 2 * r));
+                // White core
+                double wr = 3.5 * life;
+                g.setColor(alpha(Color.WHITE, 0.85 * life));
+                g.fill(new Ellipse2D.Double(p[i] - wr, p[i + 1] - wr, 2 * wr, 2 * wr));
             }
         }
     }
@@ -480,53 +566,104 @@ public final class ArenaPanel extends JPanel {
         for (PlayerView p : players) {
             if (!p.alive()) continue;
             Color c = new Color(p.colorRgb());
+
+            // --- Update exhaust trail
+            java.util.ArrayDeque<float[]> trail = trails.computeIfAbsent(p.id(), k -> new java.util.ArrayDeque<>());
+            // Trail point is at the back of the ship
+            double trailX = p.x() - Math.cos(p.angle()) * 14;
+            double trailY = p.y() - Math.sin(p.angle()) * 14;
+            trail.addLast(new float[]{(float) trailX, (float) trailY});
+            if (trail.size() > 14) trail.removeFirst();
+
+            // Draw exhaust trail
+            float[] trailArr = new float[trail.size() * 2];
+            int ti = 0;
+            for (float[] pt : trail) { trailArr[ti++] = pt[0]; trailArr[ti++] = pt[1]; }
+            for (int i = 0; i < trail.size() - 1; i++) {
+                float a = (float) i / trail.size();
+                g.setColor(alpha(c, a * 0.45));
+                float w = 1.5f + a * 4f;
+                g.setStroke(new BasicStroke(w, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+                g.draw(new java.awt.geom.Line2D.Float(trailArr[i * 2], trailArr[i * 2 + 1],
+                        trailArr[i * 2 + 2], trailArr[i * 2 + 3]));
+            }
+
             AffineTransform t = g.getTransform();
             g.translate(p.x(), p.y());
 
-            g.setColor(alpha(c, 0.16));
-            g.fill(new Ellipse2D.Double(-28, -28, 56, 56));
+            // Ambient glow disk
+            java.awt.RadialGradientPaint glow = new java.awt.RadialGradientPaint(
+                    new java.awt.geom.Point2D.Double(0, 0), 32,
+                    new float[]{0f, 1f},
+                    new Color[]{alpha(c, 0.22), alpha(c, 0)});
+            g.setPaint(glow);
+            g.fill(new Ellipse2D.Double(-32, -32, 64, 64));
+
             if (p.overclocked()) {
-                double r = 24 + 3 * Math.sin(now / 6e7);
-                g.setColor(new Color(255, 224, 102, 160));
-                g.setStroke(new BasicStroke(2, BasicStroke.CAP_BUTT, BasicStroke.JOIN_MITER, 10, new float[]{4, 4}, (float) ((now / 2e7) % 8)));
+                double r = 26 + 4 * Math.sin(now / 5e7);
+                // Spinning dashed ring — gold
+                g.setColor(new Color(255, 224, 102, 180));
+                g.setStroke(new BasicStroke(2.5f, BasicStroke.CAP_BUTT, BasicStroke.JOIN_MITER, 10,
+                        new float[]{5, 4}, (float) ((now / 1.5e7) % 9)));
                 g.draw(new Ellipse2D.Double(-r, -r, 2 * r, 2 * r));
+                // Inner glow
+                g.setColor(new Color(255, 220, 60, 55));
+                g.fill(new Ellipse2D.Double(-r + 4, -r + 4, 2 * r - 8, 2 * r - 8));
             }
 
             g.rotate(p.angle());
             if (p.dashing()) {
-                for (int i = 1; i <= 3; i++) {
-                    g.setColor(alpha(c, 0.25 / i));
-                    g.fill(ship(-i * 12));
+                // More dramatic ghost afterimages
+                for (int i = 1; i <= 5; i++) {
+                    g.setColor(alpha(c, 0.22 / i));
+                    g.fill(ship(-i * 10));
                 }
             }
             Path2D body = ship(0);
-            g.setColor(c.darker().darker());
+            // Fill with dark version, stroke with full color + inner highlight
+            g.setColor(alpha(c.darker().darker(), 0.9));
             g.fill(body);
-            g.setStroke(new BasicStroke(2.2f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+            g.setStroke(new BasicStroke(2.5f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
             g.setColor(c);
             g.draw(body);
-            g.setColor(Color.WHITE);
-            g.fill(new Ellipse2D.Double(1, -3, 6, 6));
+            // Cockpit glint
+            g.setColor(new Color(255, 255, 255, 220));
+            g.fill(new Ellipse2D.Double(2, -3.5, 6, 6));
+            // Engine exhaust glow at back
+            g.setStroke(new BasicStroke(1));
+            g.setColor(alpha(c, 0.6));
+            g.fill(new Ellipse2D.Double(-14, -3, 5, 6));
             g.setTransform(t);
 
             if (p.shielded()) {
-                double r = 25 + 2 * Math.sin(now / 5e7);
-                g.setColor(new Color(255, 255, 255, 140));
-                g.setStroke(new BasicStroke(2));
+                double r = 27 + 3 * Math.sin(now / 4e7);
+                // Shimmering shield
+                java.awt.RadialGradientPaint shieldGlow = new java.awt.RadialGradientPaint(
+                        new java.awt.geom.Point2D.Double(p.x(), p.y()), (float) r + 8,
+                        new float[]{0.7f, 1f},
+                        new Color[]{new Color(200, 240, 255, 0), new Color(200, 240, 255, 80)});
+                g.setPaint(shieldGlow);
+                g.fill(new Ellipse2D.Double(p.x() - r - 8, p.y() - r - 8, 2 * (r + 8), 2 * (r + 8)));
+                g.setColor(new Color(200, 240, 255, 200));
+                g.setStroke(new BasicStroke(2.2f));
                 g.draw(new Ellipse2D.Double(p.x() - r, p.y() - r, 2 * r, 2 * r));
             }
 
             // name + HP above the ship, or below it when hugging the top wall
             boolean below = p.y() < 50;
             double barY = below ? p.y() + 28 : p.y() - 30;
-            double nameY = below ? p.y() + 46 : p.y() - 36;
-            double barW = 38;
-            g.setColor(new Color(0, 0, 0, 170));
-            g.fill(new Rectangle2D.Double(p.x() - barW / 2, barY, barW, 4));
-            g.setColor(blend(new Color(0xFF4040), new Color(0x7CFF4F), p.hp() / 100.0));
-            g.fill(new Rectangle2D.Double(p.x() - barW / 2, barY, barW * p.hp() / 100.0, 4));
+            double nameY = below ? p.y() + 48 : p.y() - 38;
+            double barW = 44;
+            g.setColor(new Color(0, 0, 0, 180));
+            g.fill(new RoundRectangle2D.Double(p.x() - barW / 2 - 1, barY - 1, barW + 2, 6, 4, 4));
+            Color hpColor = blend(new Color(0xFF4040), new Color(0x7CFF4F), p.hp() / 100.0);
+            g.setColor(hpColor);
+            g.fill(new RoundRectangle2D.Double(p.x() - barW / 2, barY, barW * p.hp() / 100.0, 4, 4, 4));
+            // HP bar glow
+            g.setColor(alpha(hpColor, 0.35));
+            g.fill(new RoundRectangle2D.Double(p.x() - barW / 2 - 2, barY - 2, barW + 4, 8, 6, 6));
             g.setFont(NAME);
-            g.setColor(c);
+            g.setColor(p.id() == myId ? Color.WHITE : c);
             String label = p.id() == myId ? "> " + p.name() + " <" : p.name();
             int half = g.getFontMetrics().stringWidth(label) / 2 + 2;
             shadowed(g, label, Math.max(half, Math.min(map.width() - half, p.x())), nameY);
@@ -706,14 +843,23 @@ public final class ArenaPanel extends JPanel {
         } else {
             PlayerView me = find(players, myId);
             if (me != null && !me.alive() && s.phase() == Phase.PLAYING) {
-                g.setFont(BIG);
+                // Full-screen death vignette
+                int va = 130;
+                g.setPaint(new GradientPaint(0, 0, new Color(200, 0, 40, va), w / 2f, h / 2f, new Color(120, 0, 20, 0)));
+                g.fillRect(0, 0, w, h);
+                // Big ZAPPED text with glow
+                g.setFont(HUGE);
+                g.setColor(new Color(255, 0, 60, 90));
+                for (int dx = -4; dx <= 4; dx += 2) for (int dy = -4; dy <= 4; dy += 2)
+                    centered(g, "ZAPPED", w / 2.0 + dx, h / 2.0 - 40 + dy);
                 g.setColor(new Color(0xFF3B6B));
-                shadowed(g, "ZAPPED", w / 2.0, h / 2.0 - 30);
+                shadowed(g, "ZAPPED", w / 2.0, h / 2.0 - 40);
                 g.setFont(FEED);
-                g.setColor(Color.WHITE);
-                shadowed(g, lastDeathLine, w / 2.0, h / 2.0 + 4);
+                g.setColor(new Color(255, 200, 200));
+                shadowed(g, lastDeathLine, w / 2.0, h / 2.0 + 20);
                 g.setFont(MED);
-                shadowed(g, String.format("respawn in %.1f", me.respawnIn()), w / 2.0, h / 2.0 + 40);
+                g.setColor(new Color(255, 120, 120));
+                shadowed(g, String.format("respawn in %.1f s", me.respawnIn()), w / 2.0, h / 2.0 + 60);
             }
         }
 
@@ -734,29 +880,56 @@ public final class ArenaPanel extends JPanel {
     }
 
     private void drawResults(Graphics2D g, int w, int h, GameSnapshot s) {
+        // Background overlay
+        g.setColor(new Color(0, 0, 0, 140));
+        g.fillRect(0, 0, w, h);
         List<PlayerView> sorted = new ArrayList<>(s.players());
         sorted.sort(Comparator.comparingInt(PlayerView::kills).reversed().thenComparingInt(PlayerView::deaths));
-        int bw = 460, bh = 120 + 26 * sorted.size();
+        int bw = 520, bh = 140 + 32 * sorted.size();
         int x = w / 2 - bw / 2, y = h / 2 - bh / 2;
-        g.setColor(new Color(8, 12, 24, 225));
-        g.fill(new RoundRectangle2D.Double(x, y, bw, bh, 18, 18));
-        g.setColor(new Color(0x78E1FF));
-        g.setStroke(new BasicStroke(2));
-        g.draw(new RoundRectangle2D.Double(x, y, bw, bh, 18, 18));
-        g.setFont(MED);
-        g.setColor(Color.WHITE);
-        centered(g, s.winner() + " WINS", w / 2.0, y + 44);
+        // Panel with gradient
+        g.setPaint(new GradientPaint(x, y, new Color(12, 18, 45, 240), x, y + bh, new Color(5, 8, 22, 240)));
+        g.fill(new RoundRectangle2D.Double(x, y, bw, bh, 20, 20));
+        // Glowing border
+        g.setColor(new Color(0x78E1FF, false));
+        g.setStroke(new BasicStroke(2.5f));
+        g.draw(new RoundRectangle2D.Double(x, y, bw, bh, 20, 20));
+        g.setColor(new Color(120, 225, 255, 30));
+        g.setStroke(new BasicStroke(8));
+        g.draw(new RoundRectangle2D.Double(x - 3, y - 3, bw + 6, bh + 6, 24, 24));
+        // Winner line
+        g.setFont(BIG.deriveFont(48f));
+        Color winnerColor = sorted.isEmpty() ? Color.WHITE : new Color(sorted.get(0).colorRgb());
+        // Glow
+        g.setColor(alpha(winnerColor, 0.3));
+        for (int dx = -3; dx <= 3; dx++) for (int dy = -3; dy <= 3; dy++)
+            centered(g, s.winner() + " WINS!", w / 2.0 + dx, y + 52 + dy);
+        g.setColor(winnerColor);
+        shadowed(g, s.winner() + " WINS!", w / 2.0, y + 52);
+        // Trophy emoji replacement
         g.setFont(MONO);
+        g.setColor(new Color(0xFFE066));
+        centered(g, "★ ★ ★ ROUND OVER ★ ★ ★", w / 2.0, y + 80);
         g.setColor(DIM);
-        centered(g, "#   player            zaps  died", w / 2.0, y + 78);
-        int row = y + 104;
+        g.setFont(MONO);
+        centered(g, "  #    player                 zaps   died  ", w / 2.0, y + 108);
+        // Divider
+        g.setColor(new Color(0x78E1FF, false));
+        g.setStroke(new BasicStroke(1));
+        g.draw(new java.awt.geom.Line2D.Double(x + 20, y + 116, x + bw - 20, y + 116));
+        int row = y + 136;
         int rank = 1;
         for (PlayerView p : sorted) {
-            g.setColor(new Color(p.colorRgb()));
+            Color pc = new Color(p.colorRgb());
+            if (rank == 1) {
+                g.setColor(alpha(pc, 0.12));
+                g.fill(new RoundRectangle2D.Double(x + 8, row - 22, bw - 16, 28, 8, 8));
+            }
+            g.setColor(pc);
             g.setFont(p.id() == myId ? MONO_BOLD : MONO);
-            centered(g, String.format("%d   %-16s  %4d  %4d", rank++, ellipsize(p.name(), 16), p.kills(), p.deaths()),
+            centered(g, String.format("%d   %-18s  %5d  %5d", rank++, ellipsize(p.name(), 18), p.kills(), p.deaths()),
                     w / 2.0, row);
-            row += 26;
+            row += 32;
         }
     }
 
