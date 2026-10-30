@@ -1,2 +1,11 @@
-TODO: start homework
-TODO: actually start homework
+HOMEWORK — ALGORITHMS FOR DISTRIBUTED SYSTEMS
+Task: "Implement blackboard or event-based communication with RPCs."
+
+Status: DONE ✓
+Method: Built a multiplayer laser battle where the server pushes
+        game frames to every client via Java RMI callbacks at 30 Hz.
+
+Wait, that counts, right?  (It does. Check the README.)
+
+P.S. This file is a crate in the arena. Please don't shoot it.
+     ... actually go ahead, it's fine.
