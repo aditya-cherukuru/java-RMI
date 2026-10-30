@@ -1,0 +1,11 @@
+# build output
+*.class
+out/
+*.jar
+sources.txt
+
+# local scratch
+new.pdf
+new.txt
+.vscode/
+.idea/
