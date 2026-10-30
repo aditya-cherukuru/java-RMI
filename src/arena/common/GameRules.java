@@ -23,6 +23,10 @@ public final class GameRules {
             "java.rmi.RemoteException: skill not found",
             "nice ping lol",
             "it works on my machine",
+            "have you tried turning your stub off and on again?",
+            "NullPointerException: your skills are null",
+            "404: competence not found",
+            "your callback will never be invoked",
     };
 
     public static final int[] PLAYER_COLORS = {
