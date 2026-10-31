@@ -1,0 +1,11 @@
+services:
+  rmi-client:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: rmi-arena:latest
+    ports:
+      - "6080:6080"
+    environment:
+      - SERVER_IP=${SERVER_IP:-100.115.64.88}
+      - PLAYER_NAME=${PLAYER_NAME:-Player}

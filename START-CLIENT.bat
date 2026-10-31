@@ -15,8 +15,20 @@ echo.
 REM Check Java
 java -version >nul 2>&1
 if errorlevel 1 (
-    echo [ERROR] Java not found! Install Java 17+ from https://adoptium.net
-    echo        Then close this window and double-click again.
+    echo [!] Java 17+ was not found on this computer.
+    echo.
+    echo [*] Would you like to automatically install Java 17 now using Windows winget?
+    set /p AUTO_INSTALL="Install Java now? (Y/N, default Y): "
+    if /i not "%AUTO_INSTALL%"=="n" (
+        echo.
+        echo [*] Installing Java 17 (Eclipse Temurin JRE)... please wait a moment...
+        winget install --id EclipseAdoptium.Temurin.17.JRE -e --accept-source-agreements --accept-package-agreements
+        echo.
+        echo [OK] Installation finished! Please close this window and double-click START-CLIENT.bat again.
+        pause
+        exit /b 0
+    )
+    echo [ERROR] Java 17+ is required. Install from https://adoptium.net and try again.
     pause
     exit /b 1
 )
