@@ -1,136 +1,133 @@
 # 🎮 RMI Arena — Seminar Setup Guide
 
-> **Algorithms for Distributed Systems · Seminar 1 · Java RMI**  
-> Framework: **Java RMI** | Demo: Multiplayer laser battle over RMI
+> **Algorithms for Distributed Systems · Seminar 1 · Java RMI**
 
 ---
 
-## Quick Summary
+## 🚨 TL;DR — What to do RIGHT NOW (Sunday)
 
-| Role | Laptop | What to run |
-|---|---|---|
-| **Server** | Aditya's laptop | `java -jar rmi-arena.jar server` |
-| **Client 1** | Teammate 1 | `java -jar rmi-arena.jar client <server-ip> <YourName>` |
-| **Client 2** | Teammate 2 | `java -jar rmi-arena.jar client <server-ip> <YourName>` |
+- [ ] **Aditya:** Run `build.bat` → produces `rmi-arena.jar`
+- [ ] **Everyone:** `java -version` → need **Java 17+** → https://adoptium.net
+- [ ] **Aditya:** Copy `rmi-arena.jar` + `START-CLIENT.bat` to teammates (USB / Discord)
+- [ ] **Test together on the uni WiFi** (or any shared WiFi) → run `ls` test below
+- [ ] **Install Tailscale as a backup** (5 min, free) in case the WiFi has client isolation
 
 ---
 
-## Step 0 — Before the day (do this the day before!)
+## Plan A — University WiFi (should just work)
 
-### Everyone: Check Java
+All 3 laptops connect to the same university WiFi → same network → RMI works directly.
 
-Open a terminal and run:
-```
-java -version
-```
-You need **Java 17 or newer**. If you don't have it:
-- Windows: download from https://adoptium.net (Temurin 21, installer)
-- Or ask Aditya to copy the JRE onto a USB
-
-### Aditya (Server): Build the jar
-
-In the project folder, double-click **`build.bat`** or open a terminal there and run:
+**Aditya (server):**
 ```bat
-build.bat
+java -jar rmi-arena.jar server
+```
+The banner prints your local IP, e.g. `192.168.x.x` or `10.x.x.x`. Give that to teammates.
+
+**Teammates (clients):**
+```bat
+java -jar rmi-arena.jar client 192.168.x.x YourName
+```
+Or just double-click `START-CLIENT.bat` — it asks for the IP and name.
+
+### Test it before Monday
+From a teammate's laptop on the same WiFi:
+```bat
+java -jar rmi-arena.jar ls 192.168.x.x
+```
+- **Prints a file listing** → ✅ uni WiFi allows it, you're done, nothing else needed
+- **"Cannot reach..."** → the WiFi has client isolation → use Plan B below
+
+---
+
+## Plan B — Phone Hotspot (instant backup, no setup)
+
+If the WiFi blocks laptop-to-laptop traffic: one person turns on their phone hotspot,
+everyone connects to it, RMI works exactly the same way.
+
+| Phone | Where |
+|---|---|
+| iPhone | Settings → Personal Hotspot → toggle ON |
+| Android | Settings → Connections → Mobile Hotspot → toggle ON |
+
+Same commands as above — just connect to the hotspot WiFi instead of uni WiFi.
+
+---
+
+## Plan C — Tailscale VPN (works over any network, including internet)
+
+Install once (Sunday), forget about it. If Plans A and B both fail on Monday,
+Tailscale is the 60-second fix.
+
+1. Everyone installs: https://tailscale.com/download (free, Google/GitHub login)
+2. Aditya creates invite: https://login.tailscale.com/admin/invite → send link to teammates
+3. Everyone clicks the invite link → now all on the same Tailscale network
+4. Aditya's Tailscale IP (e.g. `100.x.x.x`) shows in the tray icon
+5. Server: `java -jar rmi-arena.jar server --host 100.x.x.x`
+6. Clients: connect to `100.x.x.x` instead of the LAN IP
+
+---
+
+## ⚡ Day-of checklist (Monday, 10 min before presenting)
+
+```
+□ All laptops on uni WiFi
+□ START-SERVER.bat double-clicked → banner printed → IP noted
+□ Both clients launched → game window open, player appears in arena
+□ Press F3 in client → confirm "mode: PUSH" (callbacks working!)
+□ Press TAB → file browser opens (remote ls works!)
+□ Projector showing server Control Room with bots fighting → ready!
 ```
 
-This creates `rmi-arena.jar`. **Copy this one file to both teammates** (USB, WhatsApp, Discord).
-
-> The teammates only need the `.jar`. They do NOT need source code or a JDK — just a JRE.
+If clients can't connect → hotspot → re-run server → sorted in under 2 minutes.
 
 ---
 
-## Step 1 — Network Setup (CRITICAL — do this first!)
+One person turns on their phone hotspot. Everyone connects to it.  
+Same network = RMI works directly.
 
-### Option A: Phone Hotspot (MOST RELIABLE)
+| Phone | Steps |
+|---|---|
+| **iPhone** | Settings → Personal Hotspot → Allow Others to Join → toggle ON |
+| **Android** | Settings → Connections → Mobile Hotspot → toggle ON |
 
-1. **One person** turns on their phone hotspot
-2. **All three laptops** connect to this hotspot
-3. Done. Move on.
+Then start server normally — no `--host` flag needed:
+```bat
+java -jar rmi-arena.jar server
+```
+Note the IP from the banner and give it to teammates:
+```bat
+java -jar rmi-arena.jar client 192.168.x.x YourName
+```
 
-> **Eduroam / university Wi-Fi blocks laptop-to-laptop traffic!**
-> The game will NOT work on eduroam. Use a phone hotspot.
-
-### Option B: Tailscale VPN (also works)
-
-1. Everyone installs Tailscale from https://tailscale.com
-2. Everyone logs in and joins the same network
-3. Start the server with `--host <your-tailscale-ip>` (e.g. `100.x.x.x`)
+> ⚠️ **Don't rely on this as Plan A** — hotspot data might be limited, and it depends on mobile signal in the room.
 
 ---
 
-## Step 2 — Firewall (Windows only, run once)
+## ⚡ Day-of checklist (Monday morning, 10 min before presenting)
 
-On **all three laptops**, open a terminal **as Administrator** and run:
+```
+□ Tailscale running on all 3 laptops (green icon in tray)
+□ START-SERVER.bat double-clicked → banner printed → IP noted
+□ Both clients launched → game window open, player appears in arena
+□ Press F3 in client → confirm "mode: PUSH" (means callbacks working!)
+□ Press TAB → file browser opens (confirm remote ls works)
+□ Server dashboard visible (bots already fighting) → projector ready
+```
 
+If anything fails → **switch to phone hotspot immediately** (< 1 min).
+
+---
+
+## 🔧 Firewall (Windows — run once on each laptop)
+
+Open terminal **as Administrator** and paste:
 ```bat
 netsh advfirewall firewall add rule name="RMI Arena" dir=in action=allow protocol=TCP localport=1099-1101
 ```
 
-> When Java first tries to listen on a port, Windows will pop up a firewall dialog.
-> Click **"Allow access" on BOTH "Private" and "Public" networks**.
-
-To clean up after the seminar:
-```bat
-netsh advfirewall firewall delete rule name="RMI Arena"
-```
-
----
-
-## Step 3 — Start the Server (Aditya's laptop)
-
-Open a terminal in the project folder and run:
-
-```bat
-java -jar rmi-arena.jar server
-```
-
-The server will print a banner like this:
-
-```
-========================================================================
-  RMI ARENA server is running
-
-  Registry       rmi://192.168.1.42:1099
-  Bound names    ArenaService, FileService
-  Object port    1100
-
-  Friends join with:   java -jar rmi-arena.jar client 192.168.1.42 <name>
-========================================================================
-```
-
-**Note the IP address** (e.g. `192.168.1.42`) — teammates need it.
-
-> If the wrong IP is shown (e.g. a VMware adapter):
-> `java -jar rmi-arena.jar server --host 192.168.1.42`
-
----
-
-## Step 4 — Join as Clients (Teammates' laptops)
-
-Each teammate runs this (replace IP and name):
-
-```bat
-java -jar rmi-arena.jar client 192.168.1.42 Alice
-java -jar rmi-arena.jar client 192.168.1.42 Bob
-```
-
-A login dialog pops up if no args are given — just fill in the IP and name.
-
-> To also play on the server laptop, open a second terminal:
-> `java -jar rmi-arena.jar client localhost Aditya`
-
----
-
-## Step 5 — Add Bots (if someone can't connect, or just for chaos)
-
-On any laptop (or the server):
-
-```bat
-java -jar rmi-arena.jar bot 192.168.1.42 2
-```
-
-This adds 2 AI players. You can also click **"🤖 + Bot"** in the server Control Room window.
+When Java first opens a port, Windows pops up a firewall dialog.  
+**Click "Allow" on both Private AND Public networks.**
 
 ---
 
@@ -138,81 +135,81 @@ This adds 2 AI players. You can also click **"🤖 + Bot"** in the server Contro
 
 | Key | Action |
 |---|---|
-| `W`/`S` or arrows | Thrust forward / back |
-| `A`/`D` | Turn |
-| `Space` | **Fire laser** (bank shots = +65% damage!) |
+| `W`/`S` or `↑`/`↓` | Thrust |
+| `A`/`D` or `←`/`→` | Turn |
+| `Space` | **Fire laser** *(bounces off walls — bank shots do +65% damage!)* |
 | `Shift` | **Dash** |
-| `1`–`4` | Taunts (`java.rmi.RemoteException: skill not found`) |
-| `Tab` | **Remote `ls`** — browse server's shared/ folder live |
-| `F3` | RMI telemetry overlay (ping, push/pull mode, bytes/s) |
-| `M` | Mute / unmute |
+| `1`–`4` | Taunts |
+| `Tab` | **Remote `ls`** — browse the server's folder via RMI |
+| `F3` | RMI telemetry (shows PUSH/PULL mode, ping, bytes/frame) |
+| `M` | Mute |
 
 ---
 
-## Ports Used (for the slides)
+## Ports (for the presentation slides)
 
 | Port | What |
 |---|---|
-| **1099** | RMI Registry (`LocateRegistry.createRegistry(1099)`) |
-| **1100** | Server remote objects (`ArenaService`, `FileService`) |
-| **1101** | Client callback listeners (`ArenaListener`) |
+| `1099` | RMI Registry |
+| `1100` | Server remote objects (ArenaService, FileService) |
+| `1101` | Client callbacks (ArenaListener — the push direction) |
 
 ---
 
 ## Troubleshooting
 
-### "Cannot reach server-ip:1099"
-- Wrong IP? Check the server banner
-- Not on the same hotspot? Reconnect
-- Firewall? Run the `netsh` command above on the **server** laptop
-- If all else fails, run bots from the server and demo with localhost
+### "Cannot reach server:1099"
+→ Tailscale not connected on one machine?  
+→ Wrong IP? Copy it from the server banner exactly  
+→ Firewall? Run the `netsh` command above  
+→ **Switch to phone hotspot**
+
+### Client shows `mode: PULL` instead of `PUSH`
+This is **fine and actually a talking point!**  
+The client's incoming firewall blocked callbacks — game auto-switches to polling.  
+Press F3 and tell the audience: *"This is the push-vs-pull fallback we discussed."*
+
+### Server shows the wrong IP (VMware/VirtualBox adapter)
+```bat
+java -jar rmi-arena.jar server --host 100.x.x.x
+```
+Use the Tailscale IP explicitly.
 
 ### "Registry answered but lookup failed"
-- Did the server fully start? Look for the banner in the terminal
-- Restart the server and try again
+Server didn't fully start. Restart it, wait for the banner to print.
 
-### Client shows PULL mode instead of PUSH
-This is **expected and actually demo-worthy!** The client's firewall is blocking
-incoming callbacks. The game still works — client polls instead of receiving pushes.
-Press F3 in the client and point at the mode: "This is the push-vs-pull fallback."
-
-### Test connectivity before the seminar
-From a teammate's laptop:
+### Nobody can connect and presentation starts in 2 minutes
+Run bots from the server laptop itself — the demo still works perfectly:
 ```bat
-java -jar rmi-arena.jar ls 192.168.1.42
+java -jar rmi-arena.jar bot localhost 3
+java -jar rmi-arena.jar client localhost Aditya
 ```
-If it prints a directory listing → everything works.
+Audience can't tell the bots are local.
 
 ---
 
-## What the Audience Sees During the Demo
+## Suggested 15-min demo script
 
-1. **Server window** — "Control Room" on the projector:
-   - Left: live arena view (spectator)
-   - Right: connected clients, calls/second, live RMI call log
-2. **Client windows** — each teammate's laptop shows their player
-3. Press **F3** in any client to reveal: push/pull mode, callback endpoint, ping RTT
-4. Press **Tab** to open the remote file browser (live RMI `ls` calls, visible in the log)
-5. **Shoot crates** to destroy files from the shared folder
-6. Try browsing into `secrets/` — the audience will love it
-
----
-
-## Suggested Demo Script (15 minutes)
-
-| Time | Action |
+| Time | What |
 |---|---|
-| 0:00 | Server running, bots fighting — audience walks in to action |
-| 1:00 | "This entire game runs over Java RMI. Here's how." |
-| 2:00 | Show the 3 HowTo files (DirectoryService, Server, Client) |
-| 4:00 | Live `ls` from a teammate's terminal — Control Room log shows the call |
-| 5:00 | Teammates join. Show Control Room: PUSH mode, callback endpoint |
-| 7:00 | Battle. Point at calls/s counter. Shoot a crate. Press Tab → remote ls |
-| 9:00 | Kill a client process → "timed out (8s)" appears in the log |
-| 11:00 | Start a client with `--pull` → F3 shows PULL mode — explain the fallback |
-| 13:00 | Verdict: strengths/weaknesses vs. gRPC |
-| 15:00 | Q&A |
+| `0:00` | Server running, bots fighting on projector — audience walks in |
+| `1:00` | *"This whole game runs over Java RMI. Let me show you."* |
+| `2:00` | Show the 3 HowTo files (DirectoryService, Server, Client) |
+| `4:00` | Teammate runs `START-CLIENT.bat` live — Control Room log shows `join()` call |
+| `5:30` | Both teammates in. Point at Control Room: PUSH mode, callback endpoint, calls/s |
+| `7:00` | Live battle. Shoot a crate. Press TAB → remote `ls` → browse `secrets/` |
+| `9:00` | Kill one client process → log shows *"timed out (8s)"* |
+| `11:00` | Start client with `--pull` → F3 shows PULL mode → explain push vs pull |
+| `13:00` | Verdict: zero IDL, callbacks easy; vs Java-only, serialisation cost, firewall pain |
+| `15:00` | Questions |
 
 ---
 
-*Good luck! If all else fails, bots + localhost is still a solid demo.*
+## File structure (what to copy to teammates)
+
+```
+rmi-arena.jar       ← the game (teammates need THIS)
+START-CLIENT.bat    ← double-click to join (teammates need THIS)
+```
+
+Teammates do NOT need the source code, build tools, or anything else.
