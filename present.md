@@ -139,3 +139,101 @@ Have these **5 tabs** open in your IDE before your part starts:
 > *Java RMI is a brilliant, elegant framework for building tightly coupled distributed systems across trusted clusters, but modern industry has evolved toward HTTP/2 multiplexing and cross-language protocols like gRPC.*  
 >  
 > *Thank you very much for your time, and we're happy to answer any questions!"*
+
+
+
+
+
+**YES, EXACTLY! You just hit the nail on the head.** 
+
+That is the entire definition of **Location Transparency** in distributed systems.
+
+In terms of pure Java, your entire distributed system is just **3 pieces**:
+
+---
+
+### 1. The Interfaces (The Contracts)
+*These live in `src/arena/common/` and just `extend Remote`:*
+* **`FileService`** — *"Here is how to list files (`list()`)"*
+* **`ArenaService`** — *"Here is how clients talk to the server (`join()`, `sendInput()`)"*
+* **`ArenaListener`** — *"Here is how the server talks back to clients (`onFrame()`)"*
+
+They have zero implementation code—just normal Java method signatures declaring `throws RemoteException`.
+
+---
+
+### 2. The Implementations (The Real Work)
+*These are standard Java classes that implement those interfaces:*
+* **`FileServiceImpl`** implements `FileService` (reads the local hard drive).
+* **`ArenaServiceImpl`** implements `ArenaService` (manages player tokens and sessions).
+* **`CallbackListener`** (inside `ArenaClient.java`) implements `ArenaListener` (takes the frame and paints it on the screen).
+
+---
+
+### 3. The Main Files (The Orchestrators)
+* **`ArenaServer.java`** — Starts up, calls `UnicastRemoteObject.exportObject()`, and registers the implementation under `"ArenaService"` in the RMI Registry.
+* **`ArenaClient.java`** — Looks up `"ArenaService"` from the registry, gets the stub, and calls `arena.join()` just like calling any ordinary Java object method.
+* **`Session.java`** — Takes the client's `ArenaListener` stub and calls `listener.onFrame()` at 30 Hz.
+
+---
+
+### Why this is a great thing to say to the professor:
+
+You can literally say this in your presentation:
+
+> *"If you look at our code in terms of Java, it is just normal Java interfaces and normal classes implementing them.*  
+>  
+> *We didn't write any raw TCP socket handling, we didn't define byte buffers, and we didn't write JSON parsers.*  
+>  
+> *Java RMI gives us complete **Location Transparency**: we write standard Java interfaces, and the Java runtime automatically generates the dynamic proxy stubs that serialize the method calls and dispatches them across the network."*
+
+It sounds simple because Java RMI was specifically designed in 1996 to make distributed programming feel identical to standard local Java programming!
+
+
+
+
+
+
+Ran check if files are actually deleted on disk
+
+Here is the exact breakdown of how data travels and where it lives:
+
+---
+
+### 1. How Server and Client Share Data: Java Serialization
+
+Under the hood, Java RMI uses **two mechanisms** to share data across the network:
+
+#### A. Pass-by-Value (Copying Data Objects)
+Any class that implements `java.io.Serializable` (like `Frame`, `PlayerInput`, `FileEntry`, `GameSnapshot`) is shared **by copy**:
+1. When your teammate presses <kbd>W</kbd>, their laptop takes the `PlayerInput` object in RAM and **marshals** (serializes) it into a stream of binary bytes.
+2. It sends those bytes over the TCP socket to your laptop.
+3. Your server **unmarshals** (deserializes) those bytes into a brand-new Java object in your server's RAM.
+* *The client and server don't share the same memory; they send deep copies of objects over the wire.*
+
+#### B. Pass-by-Reference (Sharing Remote Objects / Stubs)
+Any class that implements `java.rmi.Remote` (like `ArenaListener`):
+* When your teammate calls `server.join("Joel", listenerStub)`, Java **does NOT copy the listener object**.
+* Instead, it creates a tiny **Remote Stub** containing your teammate’s IP and port 1101, and gives that stub to the server.
+* When your server calls `listener.onFrame()`, it uses that reference to dial back to your teammate’s machine.
+
+---
+
+### 2. Is the data being stored anywhere?
+
+#### A. The Game State: 100% In-Memory (RAM only)
+* **There is NO database** (no SQL, no MongoDB, no Redis, no save files).
+* All ship positions, scores, laser beams, and active sessions live in your computer's **RAM (Java JVM Heap)**:
+  * In `GameWorld.java`: in-memory Java `ArrayList` and `Map` collections.
+  * In `ArenaServiceImpl.java`: an in-memory `ConcurrentHashMap<Long, Session>`.
+* **If you close or restart the server:** Everything resets to zero immediately. State is completely ephemeral.
+
+#### B. The File System: On the Server's Hard Drive (`shared/`)
+* The only data stored on a physical hard drive is the **`shared/` folder** on your laptop (where `ping_results.csv` and `rmi_jokes.txt` live).
+* `FileServiceImpl` reads this directly from your disk using standard Java NIO (`Files.list()`).
+* **Important detail:** When a player shoots and destroys a crate in the game (`"Joel ran rm homework_FINAL.txt"`), it is **only destroyed in the game's RAM**—the actual file on your laptop's disk is **never deleted**!
+
+---
+
+### 💡 The 1-Sentence Summary for the Class:
+> *"All real-time game state—ship positions, health, and sessions—is kept **100% in-memory** on the server's heap for maximum speed, while data travels between machines via **Java Object Serialization** over TCP sockets without any external database."*
