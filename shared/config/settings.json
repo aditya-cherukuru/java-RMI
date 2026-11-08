@@ -1,0 +1,18 @@
+{
+  "server": {
+    "tickRate": 30,
+    "registryPort": 1099,
+    "serverObjectPort": 1100,
+    "clientCallbackPort": 1101,
+    "maxPlayers": 8
+  },
+  "gameplay": {
+    "shipRadius": 16.0,
+    "maxHp": 100,
+    "laserSpeed": 600.0,
+    "laserBounceDamageMultiplier": 1.65,
+    "roundTimeLimitSeconds": 180,
+    "scoreLimit": 10
+  }
+}
+

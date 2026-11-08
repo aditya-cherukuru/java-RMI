@@ -9,7 +9,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 /**
- * The seminar HowTo inside the game: press TAB to browse the server's shared
+ * In-game remote file browser: press TAB to browse the server's shared
  * folder. Every folder you open is one FileService.list() remote call.
  * Calls run off the Swing thread so a slow network never freezes the game.
  */

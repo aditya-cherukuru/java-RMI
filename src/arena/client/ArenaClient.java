@@ -117,8 +117,8 @@ public final class ArenaClient {
         } catch (IOException e) {
             fail("Cannot reach " + host + ":" + REGISTRY_PORT + "  (" + e.getMessage() + ")\n\n"
                     + "- Is the server running?  Is the IP right?\n"
-                    + "- Are both laptops on the same network? Campus Wi-Fi (eduroam) often blocks\n"
-                    + "  laptop-to-laptop traffic: use a phone hotspot or Tailscale instead.\n"
+                    + "- Are both machines on the same network? Client isolation often blocks\n"
+                    + "  peer-to-peer traffic: ensure peer routing or a VPN is enabled.\n"
                     + "- Windows firewall on the server: allow Java on private AND public networks.");
             return;
         }

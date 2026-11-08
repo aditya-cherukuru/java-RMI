@@ -1,0 +1,11 @@
+Network Specification
+---------------------
+Transport Protocol: JRMP (Java Remote Method Protocol) over TCP
+Registry Port: 1099
+Server Remote Object Port: 1100
+Client Remote Callback Port: 1101
+Frame Delivery Rate: 30 updates per second
+Keep-Alive Interval: 100 ms
+Client Disconnect Timeout: 8000 ms
+Socket Read Timeout: 4000 ms
+

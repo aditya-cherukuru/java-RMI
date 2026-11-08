@@ -1,0 +1,6 @@
+[2026-11-05 12:00:00.012] [SYSTEM] Registry initialized on 0.0.0.0:1099
+[2026-11-05 12:00:00.045] [SYSTEM] ArenaService exported on port 1100
+[2026-11-05 12:00:00.050] [SYSTEM] FileService exported on port 1100
+[2026-11-05 12:00:01.100] [NETWORK] Listening for client join requests...
+[2026-11-05 12:00:15.340] [ENGINE] 30Hz game loop initialized.
+

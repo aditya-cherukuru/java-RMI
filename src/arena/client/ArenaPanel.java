@@ -961,7 +961,7 @@ public final class ArenaPanel extends JPanel {
         g.setColor(DIM);
         String[] lines = {
                 "W/S or arrows: move    A/D: turn    SPACE: fire    SHIFT: dash",
-                "1-4: taunt    TAB: remote ls    F3: RMI stats    M: mute",
+                "1-4: radio msg    TAB: remote ls    F3: RMI stats    M: mute",
         };
         int y = h - 26;
         for (String l : lines) {

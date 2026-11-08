@@ -1,0 +1,9 @@
+RMI Arena Version History
+-------------------------
+v1.0.0
+- Server-authoritative physics simulation (30 Hz)
+- Bidirectional RMI remote callbacks for frame delivery
+- Automatic failover from push callbacks to polling pull mode
+- In-game remote filesystem browsing via FileService
+- Dynamic arena generation from server folder structure
+

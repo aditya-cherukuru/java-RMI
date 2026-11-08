@@ -1,6 +1,6 @@
 @echo off
 REM ================================================================
-REM  RMI ARENA — CLIENT LAUNCHER (for teammates)
+REM  RMI ARENA — CLIENT LAUNCHER
 REM  Put this file next to rmi-arena.jar and double-click it.
 REM  Just type the server IP and your name when asked.
 REM ================================================================
@@ -36,13 +36,13 @@ if errorlevel 1 (
 REM Check jar exists
 if not exist rmi-arena.jar (
     echo [ERROR] rmi-arena.jar not found!
-    echo        Copy rmi-arena.jar from Aditya's USB/Discord into this folder.
+    echo        Build rmi-arena.jar or place it in this folder.
     pause
     exit /b 1
 )
 
 REM Ask for server IP
-set /p SERVER_IP="Enter server IP (shown in Aditya's terminal, e.g. 192.168.1.42 or 100.x.x.x): "
+set /p SERVER_IP="Enter server IP (e.g. 192.168.1.42 or 100.x.x.x): "
 if "%SERVER_IP%"=="" (
     echo [ERROR] No IP entered.
     pause

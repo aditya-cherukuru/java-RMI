@@ -1,0 +1,6 @@
+RMI Arena Server Message of the Day
+-----------------------------------
+Welcome to RMI Arena - 30 Hz Distributed Laser Combat
+Press F3 for live RMI network telemetry.
+Press TAB to inspect the remote server filesystem.
+

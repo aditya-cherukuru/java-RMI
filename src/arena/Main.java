@@ -52,7 +52,7 @@ public final class Main {
 
     private static void usage() {
         System.out.println("""
-                RMI Arena - Java RMI seminar demo
+                RMI Arena - Multiplayer Battle over Java RMI
 
                   java -jar rmi-arena.jar server [--host IP] [--dir FOLDER] [--kills N] [--minutes M] [--headless]
                   java -jar rmi-arena.jar client [server-ip] [name] [--pull]

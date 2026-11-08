@@ -19,14 +19,14 @@ public final class GameRules {
     public static final int MAX_PLAYERS = 8;
 
     public static final String[] TAUNTS = {
-            "gg ez",
-            "java.rmi.RemoteException: skill not found",
-            "nice ping lol",
-            "it works on my machine",
-            "have you tried turning your stub off and on again?",
-            "NullPointerException: your skills are null",
-            "404: competence not found",
-            "your callback will never be invoked",
+            "Target acquired",
+            "Shields holding",
+            "Systems nominal",
+            "Re-routing power",
+            "Evasive maneuvers engaged",
+            "Incoming fire",
+            "Sector cleared",
+            "Signal synchronized",
     };
 
     public static final int[] PLAYER_COLORS = {

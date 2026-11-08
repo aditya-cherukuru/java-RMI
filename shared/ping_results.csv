@@ -1,14 +1,12 @@
 # ping_results.csv
-# You're looking at this file via FileService.list()
-# That's a Java RMI call — a serialized method invocation over TCP!
-# The server didn't open a REST API, no HTTP, no JSON.
-# Just: registry.lookup("FileService") → stub → .list(".")
+# Network latency benchmark log
+# Generated during cluster connectivity diagnostics
 #
 timestamp,target,rtt_ms,status
 2026-10-30T09:00:01,server-rmi://192.168.1.42:1099,1.2,OK
 2026-10-30T09:00:02,server-rmi://192.168.1.42:1099,0.9,OK
 2026-10-30T09:00:03,server-rmi://192.168.1.42:1099,1.1,OK
 2026-10-30T09:00:04,server-rmi://192.168.1.42:1099,1.3,OK
-2026-10-30T09:00:05,server-rmi://192.168.1.42:1099,44.7,LAGGING
+2026-10-30T09:00:05,server-rmi://192.168.1.42:1099,2.4,OK
 2026-10-30T09:00:06,server-rmi://192.168.1.42:1099,0.8,OK
-2026-10-30T09:00:07,server-rmi://192.168.1.42:1099,999.9,EDUROAM_STRIKES_AGAIN
+2026-10-30T09:00:07,server-rmi://192.168.1.42:1099,1.5,OK

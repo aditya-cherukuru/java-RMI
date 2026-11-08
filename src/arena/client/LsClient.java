@@ -14,7 +14,7 @@ import java.util.List;
 import static arena.common.GameRules.REGISTRY_PORT;
 
 /**
- * The seminar HowTo as a command:  java -jar rmi-arena.jar ls <server-ip> [path]
+ * Remote directory listing CLI:  java -jar rmi-arena.jar ls <server-ip> [path]
  */
 public final class LsClient {
     private LsClient() {}

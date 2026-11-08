@@ -7,7 +7,7 @@ Rule 2: If it's not the network, it's the firewall.
 Rule 3: If it's not the firewall, it's the serialVersionUID.
 Rule 4: java.rmi.server.hostname. Set it. Always.
 Rule 5: "Works on localhost" is not a distributed system.
-Rule 6: Eduroam blocks everything. Use your phone hotspot.
+Rule 6: Unicast callbacks require bidirectional routing.
 Rule 7: There is no Rule 7 (it timed out).
 
                  ┌───────────┐
@@ -21,5 +21,4 @@ Rule 7: There is no Rule 7 (it timed out).
   sendInput()    │  :1100    │    callback
   ping()         └───────────┘    :1101
 
-You are currently browsing this file via FileService.list()
-That IS the RMI call. You just called a remote method. :)
+Remote filesystem inspection powered by arena.common.FileService.list()

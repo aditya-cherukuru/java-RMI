@@ -1,193 +1,197 @@
-# RMI Arena — Java RMI Seminar
+# RMI Arena — Multiplayer Combat Game over Java RMI
 
-**Seminar 1 — Communication with RPCs · Framework: Java RMI**
+A fast-paced 2D multiplayer laser combat game built on top of **Java Remote Method Invocation (Java RMI)**. The server simulates world physics at 30 Hz and pushes state snapshots to connected clients via **bidirectional RMI callbacks**, complete with automatic push-to-pull fallback and remote filesystem inspection.
 
-This repo has two parts:
-
-1. **[`howto/`](howto/)** — the required HowTo: list a folder on a remote machine (`ls` / `dir`) with Java RMI, in three short files. Small enough to put on slides.
-2. **RMI Arena** — a multiplayer laser battle between laptops, built on the same ideas. It covers the second requirement, *event-based communication using RPCs*: the server pushes every game frame to the clients through **RMI callbacks**.
-
-The arena is built from a **directory listing of the server's file system**: every folder becomes a mirror that reflects lasers, and every file becomes a crate you can shoot (`StubBot ran rm homework_FINAL_v3.txt`). Press <kbd>TAB</kbd> in game to browse that same folder with remote `ls` calls.
+The arena level geometry is dynamically constructed from the server's filesystem: subdirectories become reflective mirror walls that bounce lasers, and files become destructible crates with hit points scaling with file size.
 
 ![arena](docs/arena.png)
 
 ---
 
-## 1. Quick start (demo day)
+## 1. Quick Start
 
-**Every laptop needs Java 17 or newer** (`java -version`). The machine that builds the jar needs a JDK.
+### Prerequisites
+- **Java 17 or newer** (`java -version`).
+- A JDK is required to build; a JRE is sufficient to run the pre-built jar.
 
+### Build
 ```bash
-build.bat            # Windows   (or: sh build.sh on macOS/Linux)
+build.bat            # Windows
+# or
+./build.sh           # macOS / Linux
+```
+This produces `rmi-arena.jar` in the project root.
+
+### Run
+
+| Role | Command | Description |
+|---|---|---|
+| **Server** | `java -jar rmi-arena.jar server` | Starts registry (1099), exports services (1100), and opens the Control Room dashboard. |
+| **Client** | `java -jar rmi-arena.jar client <server-ip> <name>` | Connects to server, exports callback listener (1101), and opens the game window. |
+| **AI Bot** | `java -jar rmi-arena.jar bot <server-ip> 3` | Spawns autonomous bot players running as standard RMI clients. |
+| **Remote `ls` CLI** | `java -jar rmi-arena.jar ls <server-ip> [path]` | Standalone CLI client demonstrating remote directory listing over RMI. |
+
+You can also double-click `rmi-arena.jar` or use the provided launcher scripts:
+- **`START-SERVER.bat`**: Launches the server with automatic network IP detection.
+- **`START-CLIENT.bat`**: Prompts for server IP and player name, then joins the match.
+
+To play locally on the host machine, run:
+```bash
+java -jar rmi-arena.jar client localhost Player1
 ```
 
-This produces `rmi-arena.jar`. Copy that one file to your friends' laptops (USB, chat, AirDrop). They don't need the source code.
+---
 
-| Who | Command |
-|---|---|
-| **Server** (your laptop) | `java -jar rmi-arena.jar server` |
-| **Client** (each friend) | `java -jar rmi-arena.jar client <server-ip> <name>` |
-| Extra AI players (any laptop) | `java -jar rmi-arena.jar bot <server-ip> 3` |
-| The HowTo as a command | `java -jar rmi-arena.jar ls <server-ip> [path]` |
-
-You can also **double-click the jar**: a small launcher asks whether to host or join.
-
-The server prints its IP address in a banner and opens the **Control Room** window (the projector view). It shows a live spectator view, connected clients, remote calls per second, and a log of every `join` / `list` / `leave` call. The **+ Bot** button adds AI players, which helps when only 2 laptops are available.
-
-To play on the server laptop too, start a second terminal there: `java -jar rmi-arena.jar client localhost <name>`.
-
-### Server options
-
-```
-server [--host IP] [--dir FOLDER] [--kills N] [--minutes M] [--headless]
-```
-
-* `--host` — the IP written into the stubs. It is auto-detected, but pick it yourself if the banner shows the wrong adapter (e.g. VMware/VirtualBox) or you use Tailscale.
-* `--dir` — the folder that becomes the map and the `ls` share. Default: `shared/` (a demo folder with suitably silly files).
-* `--kills` / `--minutes` — round length. Default: first to 10 kills or 3 minutes.
-
-### Controls
+## 2. Controls & Gameplay
 
 | Key | Action |
 |---|---|
-| <kbd>W</kbd>/<kbd>S</kbd> or ↑/↓ | thrust forward / back |
-| <kbd>A</kbd>/<kbd>D</kbd> or ←/→ | turn |
-| <kbd>Space</kbd> | fire laser (each bounce off a wall/mirror adds **+65 % damage**: bank shots) |
-| <kbd>Shift</kbd> | dash |
-| <kbd>1</kbd>–<kbd>4</kbd> | taunts (`java.rmi.RemoteException: skill not found`) |
-| <kbd>TAB</kbd> | **remote `ls`** of the server's folder (↑/↓, Enter, Backspace) |
-| <kbd>F3</kbd> | RMI telemetry overlay · <kbd>M</kbd> mute |
+| <kbd>W</kbd> / <kbd>S</kbd> or <kbd>↑</kbd> / <kbd>↓</kbd> | Thrust forward / reverse |
+| <kbd>A</kbd> / <kbd>D</kbd> or <kbd>←</kbd> / <kbd>→</kbd> | Rotate ship |
+| <kbd>Space</kbd> | Fire laser (ricochets off mirror walls add **+65% damage** per bounce) |
+| <kbd>Shift</kbd> | Dash thruster |
+| <kbd>1</kbd>–<kbd>4</kbd> | Tactical radio messages |
+| <kbd>TAB</kbd> | In-game remote filesystem explorer (interact via <kbd>↑</kbd>/<kbd>↓</kbd>, <kbd>Enter</kbd>, <kbd>Backspace</kbd>) |
+| <kbd>F3</kbd> | Real-time RMI telemetry overlay (latency, call rates, frame delivery) |
+| <kbd>M</kbd> | Toggle audio |
 
-Green **hotfix** pickups heal; yellow **overclock** pickups give rapid fire.
-
----
-
-## 2. Network checklist — read this before the seminar
-
-Distributed systems fail in distributed ways. Most RMI demos break because of networking, not code.
-
-1. **Same network.** Campus Wi-Fi (eduroam) often isolates devices from each other. The most reliable setup is **one phone hotspot that every laptop joins**. Tailscale also works (start the server with `--host <tailscale-ip>`).
-2. **Firewall.** The first time Java listens on a port, Windows asks for permission. **Allow it on Private *and* Public networks**, on every laptop. Or open the ports once from an admin terminal:
-   ```
-   netsh advfirewall firewall add rule name="RMI Arena" dir=in action=allow protocol=TCP localport=1099-1101
-   ```
-   (Remove it afterwards: `netsh advfirewall firewall delete rule name="RMI Arena"`.)
-3. **Ports used:** `1099` registry · `1100` server objects · `1101` client callbacks. All are fixed, so firewall rules stay simple.
-4. **Test the day before** with `ls` from a friend's laptop: `java -jar rmi-arena.jar ls <server-ip>`.
-
-If a client's firewall blocks the callbacks anyway, the game keeps working. The client notices that no frames are arriving and switches from **PUSH** to **PULL** (polling) by itself. The HUD then shows `mode PULL`. That fallback is worth showing in the talk (see §5).
+**Pickups**:
+- **Hotfix (Green)**: Restores ship hull points.
+- **Overclock (Yellow)**: Grants rapid laser fire.
 
 ---
 
-## 3. How RMI is used
+## 3. Network Architecture & Ports
 
-```mermaid
-flowchart LR
-    subgraph Server laptop
-        REG[(RMI Registry :1099)]
-        AS[ArenaServiceImpl]
-        FS[FileServiceImpl]
-        GW[GameWorld 30 Hz tick]
-        AS --- GW
-    end
-    subgraph Client laptop
-        UI[ArenaPanel - Swing]
-        CL[CallbackListener<br/>exported on :1101]
-    end
-    REG -. "lookup(ArenaService / FileService)" .-> UI
-    UI -- "join / sendInput / ping / taunt / poll  (:1100)" --> AS
-    UI -- "list(path)  (:1100)" --> FS
-    AS -- "onFrame(Frame)  callback (:1101)" --> CL
-    CL --> UI
+RMI Arena uses fixed TCP ports to ensure predictable routing and straightforward firewall configuration:
+
+```
+          ┌───────────────────────────────────────────────────┐
+          │                   RMI REGISTRY                    │
+          │                     Port 1099                     │
+          └─────────────────▲───────────────┬─────────────────┘
+     rebind("ArenaService") │               │ lookup("ArenaService")
+                            │               │
+  ┌─────────────────────────┴────┐     ┌────▼────────────────────────┐
+  │         SERVER HOST          │     │         CLIENT HOST         │
+  │                              │     │                             │
+  │  ArenaServiceImpl (:1100)    │◄────┼── sendInput() / ping()      │
+  │  FileServiceImpl  (:1100)    │◄────┼── list(path)                │
+  │                              │     │                             │
+  │  Session (Push Worker)       ├─────┼─▶ onFrame() callback (:1101)│
+  │  GameWorld (30 Hz Tick)      │     │   ArenaListenerImpl         │
+  └──────────────────────────────┘     └─────────────────────────────┘
 ```
 
-### Remote interfaces (the "IDL" of RMI is plain Java)
+### Port Specifications
+- **`1099` (TCP)**: Java RMI Registry.
+- **`1100` (TCP)**: Server remote objects (`ArenaService`, `FileService`).
+- **`1101` (TCP)**: Client callback listener (`ArenaListener`).
 
-| Interface | Lives on | Methods | Purpose |
-|---|---|---|---|
-| [`FileService`](src/arena/common/FileService.java) | server | `list(path)`, `rootName()` | the HowTo: remote `ls`, restricted to the shared folder |
-| [`ArenaService`](src/arena/common/ArenaService.java) | server | `join`, `sendInput`, `poll`, `ping`, `taunt`, `leave` | client → server requests |
-| [`ArenaListener`](src/arena/common/ArenaListener.java) | **client** | `onFrame(Frame)` | server → client **callback** (event push) |
+### Windows Firewall Configuration
+If Windows Defender Firewall prompts when starting the server or client, allow Java access on both Private and Public networks. Alternatively, open ports via an administrative PowerShell:
+```powershell
+netsh advfirewall firewall add rule name="RMI Arena" dir=in action=allow protocol=TCP localport=1099-1101
+```
 
-Everything else in [`arena.common`](src/arena/common/) is a `Serializable` record that is **passed by value**: `PlayerInput`, `Frame`, `GameSnapshot`, `GameEvent`, `MapData`, `FileEntry`. Remote objects are **passed by reference**: the client sends its `ArenaListener` *stub* as an ordinary argument to `join()`, and the server later calls methods on it. That is the central RMI idea behind this project.
+---
 
-### One join, step by step
+## 4. Distributed Systems Concepts in Java RMI
+
+### Remote Interfaces & Contract
+Java RMI defines remote APIs via plain Java interfaces that extend `java.rmi.Remote`, where every method declares `throws RemoteException`:
+- [`ArenaService`](src/arena/common/ArenaService.java): Server interface for player joins, inputs, polling fallback, and pings.
+- [`ArenaListener`](src/arena/common/ArenaListener.java): Client callback interface for receiving 30 Hz world snapshots.
+- [`FileService`](src/arena/common/FileService.java): Server interface for sandboxed filesystem introspection.
+
+### Pass-by-Value vs. Pass-by-Reference
+- **Pass-by-Value**: State data (`PlayerInput`, `Frame`, `GameSnapshot`, `GameEvent`, `MapData`, `FileEntry`) implements `java.io.Serializable`. When passed over RMI, objects are deep-copied via standard Java serialization.
+- **Pass-by-Reference**: Remote objects (`ArenaListener`, `ArenaService`, `FileService`) extend `Remote`. When passed as arguments (such as passing the client's `ArenaListener` stub into `arena.join(...)`), RMI transmits the remote stub reference, allowing the server to invoke methods back on the client machine.
+
+### Join & Callback Sequence
 
 ```mermaid
 sequenceDiagram
-    participant C as Client
-    participant R as Registry :1099
-    participant S as ArenaService :1100
-    C->>C: open a socket to the server to learn which local IP faces it, then set java.rmi.server.hostname
+    participant C as Client (:1101)
+    participant R as Registry (:1099)
+    participant S as Server (:1100)
+
+    C->>C: Detect outbound network interface (Net.localAddressTowards)
+    C->>C: Set java.rmi.server.hostname
     C->>R: lookup("ArenaService")
-    R-->>C: stub (proxy holding server IP:1100 + object ID)
-    C->>C: exportObject(listener, 1101)  -> client is now ALSO a server
-    C->>S: join("Aditya", listenerStub)
-    S-->>C: JoinResult(token, playerId, map)
-    loop 30x per second
-        S->>C: onFrame(snapshot + events)   [callback = push]
+    R-->>C: ArenaService stub
+    C->>C: exportObject(ArenaListenerImpl, 1101)
+    C->>S: join("Player", listenerStub)
+    S-->>C: JoinResult(token, playerId, mapData)
+    loop 30 Hz Tick Loop
+        S->>C: onFrame(snapshot, events) [Remote Callback]
     end
-    loop on key change + every 100 ms (heartbeat)
+    loop Input & Heartbeat (100 ms)
         C->>S: sendInput(token, keys)
     end
 ```
 
-### Design decisions worth talking about
-
-* **Server-authoritative.** Clients only send key states. Movement, laser ray-tracing with reflections, damage and scores are computed in [`GameWorld`](src/arena/server/GameWorld.java), so nobody can cheat by sending fake positions. The `join()` token comes from `SecureRandom`, so one client cannot steer another client's ship.
-* **One push thread per client** ([`Session`](src/arena/server/Session.java)). An RMI call blocks until it returns, so a slow laptop must never stall the game loop. Snapshots are **conflated** (if a client lags, it skips stale frames and gets the newest one). Events such as kills or joins are **queued, and re-queued if a callback fails**, so a hiccup doesn't drop them.
-* **Push with pull fallback.** After 3 failed callbacks the server stops pushing. If the client receives no frames for 2.5 s, it starts calling `poll()`. This is the *push vs. pull* trade-off from the lecture, running live.
-* **Failure detection.** `sendInput` doubles as a heartbeat. Clients that are silent for 8 s are removed (`timed out`). The RMI response timeout is lowered to 4 s, so a vanished peer causes an exception instead of a 20 s hang ([`Net`](src/arena/common/Net.java)).
-* **`java.rmi.server.hostname`** is the classic RMI pitfall: the stub contains the IP the client will connect to. The server takes it from `--host` or auto-detection. The client sets its own value by opening a socket to the server and reading which local address the OS chose ([`Net.localAddressTowards`](src/arena/common/Net.java)).
-* **Security.** `FileService` normalises paths and refuses anything outside the shared folder: `ls ../..` returns `Access denied`. RMI deserialises incoming objects, so never expose RMI to untrusted networks. Production setups add `jdk.serialFilter` and TLS socket factories.
-* **Cost of a frame.** About 1.1 KB serialised (shown live in the Control Room). At 30 Hz with 3 clients, that is roughly 100 KB/s. Java serialisation is convenient, not compact. That gives a natural comparison with gRPC/Protobuf or Cap'n Proto from the other groups.
-
----
-
-## 4. Where RMI fits in the lecture's view
-
-| Lecture concept | In Java RMI / this project |
-|---|---|
-| Interface definition (IDL) | Plain Java interfaces extending `Remote`. No separate IDL and no code generator, but Java only |
-| Client stub / server skeleton | Dynamic proxy generated at runtime (`Proxy` + `RemoteObjectInvocationHandler`). `rmic` is history |
-| Marshalling | Java object serialisation (records, lists, arrays) |
-| Naming / binding | RMI Registry: `rebind(name, stub)` / `lookup(name)` |
-| Transport protocol | JRMP over TCP (we pin ports 1099/1100/1101) |
-| Call semantics | At-most-once. On a `RemoteException` you don't know whether the call ran. Our inputs are idempotent ("current key state"), so retrying is safe |
-| Object references across machines | Stubs can be sent as arguments. The callback listener works this way |
-| Distributed garbage collection | Reference counting with leases (`java.rmi.dgc.leaseValue`). The reason the server keeps strong references to its exported objects |
-| Event-based communication | Callbacks (push) with polling (pull) as fallback |
+### Reliability & Fault Tolerance
+1. **Dedicated Client Push Threads ([`Session.java`](src/arena/server/Session.java))**:
+   RMI method calls are synchronous and block the caller. To ensure one high-latency or disconnected client cannot stall the server simulation, each connected client has an independent worker thread.
+2. **Snapshot Conflation**:
+   If a client takes longer than 33 ms to receive a frame, stale snapshots are dropped so the client immediately receives the freshest game state upon catching up.
+3. **Push-to-Pull Failover**:
+   If a client's firewall blocks incoming callback connections on port 1101, or if three consecutive callbacks fail, the server suspends pushing. When the client detects an absence of incoming frames for 2.5 seconds, it automatically switches to pull mode, fetching frames via `arena.poll(token)`.
+4. **Heartbeat & Dead Client Pruning**:
+   Every `sendInput` call serves as an active heartbeat. If no communication is received from a client for 8 seconds, the server terminates the session, reclaims its player slot, and broadcasts a disconnect event.
+5. **Sandboxed File Access**:
+   [`FileServiceImpl`](src/arena/server/FileServiceImpl.java) normalizes requested paths and strictly validates that traversal does not escape the configured shared root directory (rejecting paths such as `../../`).
 
 ---
 
-## 5. Suggested 15–20 minute talk
-
-1. **Hook (1 min)** — open with the game on the projector, bots already fighting.
-2. **What is RMI (3 min)** — remote interface → stub → registry → call. Show the 3 HowTo files.
-3. **HowTo live (2 min)** — a friend runs `ls <your-ip>` and the Control Room log shows `list(".") from 192.168.x.y`. Then `ls <ip> ../..` → `Access denied`.
-4. **Arena architecture (4 min)** — diagram above. Highlight the callback: the client becomes a server too.
-5. **Live battle (4 min)** — friends join and play. Point at the Control Room: calls/s, callback latency, bytes per frame. Shoot a crate (`rm dissertation_draft.md`). Press TAB to browse the same folder.
-6. **When things go wrong (2 min)** — close a client's lid or kill its process: `timed out` after 8 s. Start a client with `--pull` (or block its firewall) and watch it switch to PULL.
-7. **Verdict (2 min)** — strengths: zero IDL, objects by reference, callbacks are easy. Weaknesses: Java-only, serialisation cost and security risks, firewall/NAT pain, `hostname` pitfalls. Compare with gRPC.
-
----
-
-## 6. Project layout
+## 5. Project Structure
 
 ```
-howto/                     3-file HowTo (DirectoryService / Server / Client)
-src/arena/common/          remote interfaces + serialisable records + Net helpers
-src/arena/server/          registry, ArenaServiceImpl, FileServiceImpl, GameWorld, Session, dashboard
-src/arena/client/          ArenaClient (main), ArenaPanel (rendering), FileBrowser, Sfx, LsClient
-src/arena/bot/             Bot - an AI player that is an ordinary RMI client
-shared/                    demo folder that becomes the map
+├── howto/                        # Standalone 3-file Java RMI reference implementation
+│   ├── DirectoryService.java     # Remote interface contract
+│   ├── DirectoryServer.java      # Server exporting service & registry binding
+│   └── DirectoryClient.java      # Client lookup & remote invocation
+├── src/arena/
+│   ├── Main.java                 # Universal entry point & interactive launcher
+│   ├── bot/
+│   │   └── Bot.java              # Autonomous AI combat agent
+│   ├── client/
+│   │   ├── ArenaClient.java      # Client entry point, networking & game loop
+│   │   ├── ArenaPanel.java       # Swing 2D graphics rendering engine & HUD
+│   │   ├── FileBrowser.java      # In-game remote filesystem viewer
+│   │   ├── LsClient.java         # CLI client for remote directory inspection
+│   │   └── Sfx.java              # Synthesized audio effects generator
+│   ├── common/
+│   │   ├── ArenaListener.java    # Remote callback interface (client-side stub)
+│   │   ├── ArenaService.java     # Server remote interface
+│   │   ├── FileService.java      # Remote filesystem interface
+│   │   ├── GameRules.java        # Port constants, tick rates, and physics bounds
+│   │   ├── Net.java              # Network adapter discovery & RMI socket setup
+│   │   └── *.java                # Serializable records (Frame, Snapshot, Input, Events)
+│   └── server/
+│       ├── ArenaServer.java      # Server bootstrap & registry lifecycle
+│       ├── ArenaServiceImpl.java # Implementation of ArenaService
+│       ├── FileServiceImpl.java  # Sandboxed remote filesystem implementation
+│       ├── GameWorld.java        # Server-authoritative physics & laser raytracer
+│       ├── MapBuilder.java       # Dynamic map generator from server directory
+│       ├── ServerDashboard.java  # Swing Control Room spectator & telemetry UI
+│       ├── Session.java          # Per-client push queue & conflation manager
+│       └── Telemetry.java        # Atomic metrics tracking & throughput logger
+├── shared/                       # Folder serving as the source for dynamic map layout
+├── Dockerfile                    # Container definition with Xvfb and noVNC web UI
+├── docker-compose.yml            # Docker Compose configuration
+├── build.bat / build.sh          # Build scripts for Windows / Unix
+└── START-SERVER.bat / START-CLIENT.bat # Single-click Windows launchers
 ```
 
-Running the plain HowTo without the jar:
+---
+
+## 6. Docker Support
+
+To run an RMI client inside a container with web-based display output (accessible via browser through noVNC):
 
 ```bash
-cd howto
-javac *.java
-java DirectoryServer <server-ip>          # on the server
-java DirectoryClient <server-ip> .        # on the client
+docker compose up --build
 ```
+Navigate to `http://localhost:6080/vnc.html` in your web browser to view and control the game client.

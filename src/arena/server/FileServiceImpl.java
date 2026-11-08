@@ -11,7 +11,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Stream;
 
-/** The seminar HowTo, production edition: remote "ls", jailed to one shared folder. */
+/** Remote "ls", jailed to one shared folder. */
 final class FileServiceImpl implements FileService {
     private final Path root;
     private final Telemetry telemetry;

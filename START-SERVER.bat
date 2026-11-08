@@ -1,7 +1,7 @@
 @echo off
 REM ================================================================
 REM  RMI ARENA — SERVER LAUNCHER
-REM  Double-click this on Aditya's laptop to start the server.
+REM  Double-click this to start the server.
 REM  Automatically picks the best IP (Tailscale > LAN > localhost).
 REM ================================================================
 cd /d "%~dp0"

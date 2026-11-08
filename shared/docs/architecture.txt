@@ -1,0 +1,20 @@
+==================================================
+RMI ARENA ARCHITECTURE & PROTOCOL SPECIFICATION
+==================================================
+
+1. TRANSPORT
+   - Underlying Protocol: Java Remote Method Protocol (JRMP) over TCP/IP
+   - Default RMI Registry Port: 1099
+   - Exported Server Objects Port: 1100
+   - Client Callback Port: 1101
+
+2. OBJECT LIFECYCLE & REGISTRATION
+   - LocateRegistry.createRegistry(1099) initializes naming registry.
+   - UnicastRemoteObject.exportObject(arenaService, 1100) binds exported dispatch stub.
+   - UnicastRemoteObject.exportObject(fileService, 1100) handles filesystem introspection.
+
+3. STATE SYNCHRONIZATION
+   - 30 Hz server game loop dispatches world snapshots via Unicast Remote Callbacks.
+   - Conflated frame queue drops stale states if client falls behind.
+   - Automated push-to-pull fallback upon repeated packet loss or callback timeout.
+

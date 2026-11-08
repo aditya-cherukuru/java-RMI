@@ -1,2 +1,0 @@
-Why did the RMI client break up with the server?
-Too many unresolved references.

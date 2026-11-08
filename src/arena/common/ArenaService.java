@@ -28,7 +28,7 @@ public interface ArenaService extends Remote {
     /** Round-trip probe. Returns the argument unchanged. */
     long ping(long token, long clientNanos) throws RemoteException;
 
-    /** Broadcast one of the canned taunts in {@link GameRules#TAUNTS}. */
+    /** Broadcast one of the canned tactical messages in {@link GameRules#TAUNTS}. */
     void taunt(long token, int index) throws RemoteException;
 
     void leave(long token) throws RemoteException;
